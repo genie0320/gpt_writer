@@ -6,12 +6,12 @@
 # from langchain.schema import AIMessage # for chat
 # from langchain.schema import SystemMessage # for chat
 # TODO: what is templates for?
-# from langchain.prompts.chat import (
-#     ChatPromptTemplate,
-#     HumanMessagePromptTemplate,
-#     SystemMessagePromptTemplate,
-#     AIMessagePromptTemplate,
-# )
+from langchain.prompts.chat import (
+    ChatPromptTemplate,
+    HumanMessagePromptTemplate,
+    SystemMessagePromptTemplate,
+    AIMessagePromptTemplate,
+)
 
 # Prompt _______________________________________
 """
@@ -37,74 +37,109 @@ TEMP = 1.5
 # _______________
 
 # LLM Model _______________________________________
-from langchain_openai import OpenAI  # for LLM
-from langchain.prompts import PromptTemplate  # for LLM
-from langchain_openai import ChatOpenAI
+# from langchain.prompts import PromptTemplate  # for LLM, older way
+# from langchain.prompts.chat import ChatPromptTemplate  # for chat # older way
+from langchain_core.prompts import PromptTemplate, ChatPromptTemplate  # Use this.
 
-# from langchain.prompts.chat import ChatPromptTemplate  # older way
-from langchain_core.prompts import ChatPromptTemplate  # Use this.
+from langchain_openai import OpenAI  # for LLM
+from langchain_openai import ChatOpenAI
 
 llm = OpenAI(api_key=openai_api_key, temperature=TEMP, max_tokens=MAX)
 
 # LLM_Case 01 : with just a simple text
-text = "Hi?"
-res_llm = llm.invoke(text)
-print(res_llm)
+# text = "Hi?"
+# res_llm = llm.invoke(text)
+# print(res_llm)
 
 # LLM_Case 02 : with variables
-prompt = (
-    "My {name_of_person} {activity}"
-    + ". It makes me {feeling}."
-    + "\n\n translate this sentence in {language}"
-)
-user_input = input("language? : ")
-message = prompt.format(
-    name_of_person="husband",
-    activity="reading a book",
-    feeling="happy",
-    language=user_input,
-)
-print(llm.invoke(message))
+# prompt = PromptTemplate.from_template(  # template를 쓰는 것이 포인트지만... 안써도 되던데?
+#     "My {name_of_person} {activity}"
+#     + ". It makes me {feeling}."
+#     + "\n\n translate this sentence in {language}"
+# )
+# user_input = input("language? : ")
+# message = prompt.format(
+#     name_of_person="husband",
+#     activity="reading a book",
+#     feeling="happy",
+#     language=user_input,
+# )
+# print(llm.invoke(message))
+
 
 # Chat_Case 01 : Simple way
-chat_model = ChatOpenAI(api_key=openai_api_key, temperature=TEMP, max_tokens=MAX)
+# chat_model = ChatOpenAI(api_key=openai_api_key, temperature=TEMP, max_tokens=MAX)
 
-system = "You are a killing developer who work for google core department for future vision. And you love Japanese anime so much. Answer in {number} sentence and no more."
-human = "Could you help me to develop a mini project with {language}?"
+# system = "You are a killing developer who work for google core department for future vision. And you love Japanese anime so much. Answer in {number} sentence and no more."
+# human = "Could you help me to develop a mini project with {language}?"
 
-user_input01 = input("Question? : ")
-user_input02 = input("How many? : ")
+# user_input01 = input("Question? : ")
+# user_input02 = input("How many? : ")
 
-chat_prompt = ChatPromptTemplate.from_messages(
-    [
-        ("system", system),
-        ("human", human),
-        ("ai", "Sure, why not?"),
-        ("human", user_input01),
-    ]
-)
+# chat_prompt = ChatPromptTemplate.from_messages(
+#     [
+#         ("system", system),
+#         ("human", human),
+#         ("ai", "Sure, why not?"),
+#         ("human", user_input01),
+#     ]
+# )
 
-message = chat_prompt.format_messages(language="python", number=user_input02)
+# message = chat_prompt.format_messages(language="python", number=user_input02)
 
-chat_model_res = chat_model.invoke(message)  # chat model로 부름
-print(chat_model_res.content)  # chat_model로 돌아오는 대답은 .content로 꺼내줘야함.
+# chat_model_res = chat_model.invoke(message)  # chat model로 부름
+# print(chat_model_res.content)  # chat_model로 돌아오는 대답은 .content로 꺼내줘야함.
 
-# Chat_Case 02 : Complicated way. But bard says which can use for finer setting.
-template = (
-    "You are a helpful assistant that translates {input_language} to {output_language}."
-)
-system_message_prompt = SystemMessagePromptTemplate.from_template(template)
-human_template = "{text}"
-human_message_prompt = HumanMessagePromptTemplate.from_template(human_template)
+# # Chat_Case 02 : Complicated way. But bard says which can use for finer setting.
+# template = (
+#     "You are a helpful assistant that translates {input_language} to {output_language}."
+# )
+# system_message_prompt = SystemMessagePromptTemplate.from_template(template)
+# human_template = "{text}"
+# human_message_prompt = HumanMessagePromptTemplate.from_template(human_template)
 
-chat_prompt = ChatPromptTemplate.from_messages(
-    [system_message_prompt, human_message_prompt]
-)
+# chat_prompt = ChatPromptTemplate.from_messages(
+#     [system_message_prompt, human_message_prompt]
+# )
 
 # get a chat completion from the formatted messages
-res = chat_model.invoke(
-    chat_prompt.format_prompt(
-        input_language="English", output_language="French", text="I love programming."
-    ).to_messages()
+# res = chat_model.invoke(
+#     chat_prompt.format_prompt(
+#         input_language="English", output_language="French", text="I love programming."
+#     ).to_messages()
+# )
+# print(res)
+
+# When used in chain.
+from langchain.chains import LLMChain
+from langchain_openai import ChatOpenAI
+from langchain.schema import AIMessage, HumanMessage, SystemMessage
+
+chat_model = ChatOpenAI(api_key=openai_api_key, temperature=TEMP, max_tokens=MAX)
+
+# system_message_prompt = SystemMessagePromptTemplate.from_template(system_prompt)
+# human_template = "{text}"
+
+# chat_prompt = ChatPromptTemplate.from_messages(
+#     [system_message_prompt, human_message_prompt]
+# )
+
+system_prompt = SystemMessage(
+    content="You are a helpful assistant that translates {input_language} to {output_language}."
 )
-print(res)
+# human_prompt = HumanMessage(content="hi, {calling}")
+# ai_prompt = AIMessage(content="What? What did you say?")
+prompt = (
+    system_prompt
+    + HumanMessage(content="hi, buddy")
+    + AIMessage(content="What? What did you say?")
+    + "{input}"
+)
+
+# prompt.format_messages(
+#     input_language="English", output_language="Korean", calling="buddy"
+# )
+chain = LLMChain(llm=chat_model, prompt=prompt)
+res = chain.invoke("what language can you handle?")  # _.run() is deprecated
+# print(prompt)  # _.run() is deprecated
+print(res["text"])
