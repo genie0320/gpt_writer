@@ -1,67 +1,41 @@
-# -*- coding: utf-8 -*-
-"""main_langchain_RAG.ipynb의 사본
-# Project setting
+"""# Project setting
 pip install --quiet langchain langchain-openai
 pip install --quiet pypdf chromadb tiktoken
 pip install --quiet icecream
 """
 # %%
-import icecream as ic
-
-# Load Keys
 import os
+import icecream as ic
 from dotenv import load_dotenv
-
-load_dotenv()
-
-openai_api_key = os.getenv("OPENAI_API_KEY")
-
-# ___ setting ___
-LLM_MODEL = "gpt-3.5-turbo"
-MAX = 50
-TEMP = 1.5
-
-EMBED_MODEL = "text-embedding-ada-002"
-SPLIT = 500
-OVERRAP = 50
-# _______________
-
 from langchain_openai import OpenAI
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import OpenAIEmbeddings
-from langchain_community.vectorstores import Chroma
 import chromadb
 
+# from langchain_community.vectorstores import Chroma
+# from langchain_community.vectorstores import Chroma
+from langchain.vectorstores.chroma import Chroma
+
+load_dotenv()
+openai_api_key = os.getenv("OPENAI_API_KEY")
+
 llm_model = OpenAI(
-    api_key=openai_api_key,
-    # model_kwargs= {'model':LLM_MODEL},
-    model=LLM_MODEL,
-    max_tokens=MAX,
-    temperature=TEMP,
+    api_key=openai_api_key, model="gpt-3.5-turbo", max_tokens=50, temperature=2
 )
 chat_model = ChatOpenAI(
-    api_key=openai_api_key, model=LLM_MODEL, max_tokens=MAX, temperature=TEMP
+    api_key=openai_api_key, model="gpt-3.5-turbo", max_tokens=50, temperature=2
 )
-embeddings = OpenAIEmbeddings(
-    api_key=openai_api_key,
-    embeddings_model=EMBED_MODEL,
-)
+embeddings = OpenAIEmbeddings(api_key=openai_api_key)
 
 # Chroma - persistent
-client = chromadb.PersistentClient(path="/embed_chroma")
+# client = chromadb.PersistentClient(path="/embed_chroma/")
+# client.heartbeat()
+# client.reset()  # Empties and completely resets the database.
 
-print("* Got the key" if openai_api_key else "Something goes wrong")
-print(
-    f"* LLM model set : - model : {LLM_MODEL} - max token : {MAX} - temperature : {TEMP}"
-)
-print(
-    f"* Embed model set : - model : {EMBED_MODEL} - max token : {MAX} - temperature : {TEMP}"
-)
 # %%
 """# LLM setting"""
-
 # # Completion
 # prompt = PromptTemplate.from_template( '{time} + \n\n text{name} +  {action}')
 # user_input = 'Where shall we go today?'
@@ -97,46 +71,40 @@ print(
 
 # Text loader
 from langchain_community.document_loaders import TextLoader
+from langchain_community.document_loaders import PyPDFLoader
 
 text_loader = TextLoader("resources/books_content.txt", encoding="UTF-8")
 text_pages = text_loader.load()
 
-# from langchain_community.document_loaders import PyPDFLoader
-# pdf_loader = PyPDFLoader("resources/books_content.txt")
-# pdf_pages = loader.load_and_split()
-# pages[0]
+pdf_loader = PyPDFLoader("resources/plan01.pdf")
+pdf_pages = pdf_loader.load_and_split()
 
-## Transform (chunking)
 # TODO:from langchain_experimental.text_splitter import SemanticChunker > 이건 openai의 실험적 기능이라는데... 한번 써보고 싶음.
+## Transform (chunking)
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
-    # Set a really small chunk size, just to show.
     chunk_size=300,
     chunk_overlap=30,
-    # length_function=len, > tiktoken 사용시에는 왠지... 비활성해야 함.
     is_separator_regex=False,
 )
 
-# texts = text_splitter.create_documents([state_of_the_union])
 texts = text_splitter.split_documents(text_pages)
-# print(texts[0])
 print(texts[0])
-print(texts[1])
 # %%
 # Embedding & Store to vectorDB
 from langchain_openai import OpenAIEmbeddings
 
-# chroma_client = chromadb.Client() > 이건 뭐에 필요한 것인지...
-embeddings_model = OpenAIEmbeddings(api_key=openai_api_key)
+user_query = "기획이란"
 
-db = Chroma.from_documents(texts, embeddings_model)
+# save to disk
+db = Chroma.from_documents(texts, embeddings, persist_directory="./embed_chroma")
+docs = db.similarity_search(user_query)
 
-# user_input_embedding = input("검색할 키워드 입력 :")
-user_input_embedding = "기획이란"
-query = user_input_embedding
-docs = db.similarity_search(query)
-print(docs[0].page_content)
+# # load from disk
+# db = Chroma(persist_directory="./embed_chroma", embedding_function=embeddings)
+# docs = db.similarity_search(user_query)
+# print(f"from db load : {docs[0].page_content}")
 
 ## Store
 # Done with embedding
